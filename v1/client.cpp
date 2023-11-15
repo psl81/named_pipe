@@ -12,6 +12,11 @@ int main()
         ::CreateFileW(pipe_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
 
+    if (pipe_handle == INVALID_HANDLE_VALUE) {
+        std::cout << "Error: " << GetLastError() << std::endl;
+        return -1;
+    }
+
     boost::asio::readable_pipe pipe(ios);
     pipe.assign(pipe_handle);
 
@@ -21,7 +26,7 @@ int main()
         pipe.async_read_some(boost_buff,
             [&buf](auto ec, auto size) {
                 if (ec)
-                    std::cout << ec << std::endl;
+                    std::cout << ec.what() << std::endl;
                 if (!ec) {
                     buf[size] = '\0';
                     std::cout << "recv: " << buf.c_str() << std::endl;

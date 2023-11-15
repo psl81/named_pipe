@@ -27,23 +27,31 @@ int main()
             PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_WAIT, 1, buff_size, buff_size, NMPWAIT_USE_DEFAULT_WAIT, nullptr);
 
+    if (pipe_handle == INVALID_HANDLE_VALUE) {
+        std::cout << "Error: " << GetLastError() << std::endl;
+        return -1;
+    }
+
     boost::asio::writable_pipe pipe(ios, pipe_handle);
     // run client
     auto program_path = boost::dll::program_location().parent_path();
     auto client_pathname = bp::search_path("client", { program_path });
     bp::child client(client_pathname, new_window());
 
-    while (client.running())
+    if (client.running())
     {
         BOOL result = ::ConnectNamedPipe(pipe_handle, nullptr);
         std::string buf;
-        while (true)
+        while (client.running())
         {
             try {
                 std::cout << "send: ";
                 std::getline(std::cin, buf);
                 if (not buf.empty())
-                    pipe.write_some(boost::asio::buffer(buf));
+                    pipe.async_write_some(boost::asio::buffer(buf), 
+                        [&buf](auto ec, auto size) {
+                            std::cout << ec.what() << std::endl;
+                        });
             }
             catch (std::exception & e) {
                 std::cout << e.what() << std::endl;
@@ -54,7 +62,6 @@ int main()
 
     // wait for the client to exit
     client.wait();
-    int result = client.exit_code();
 
     return 0;
 }
