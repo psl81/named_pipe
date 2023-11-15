@@ -16,13 +16,16 @@ int main()
     pipe.assign(pipe_handle);
 
     std::string buf(buff_size, '\0');
+    auto boost_buff = boost::asio::buffer(buf);
     while (true) {
-        pipe.async_read_some(boost::asio::buffer(buf),
+        pipe.async_read_some(boost_buff,
             [&buf](auto ec, auto size) {
                 if (ec)
                     std::cout << ec << std::endl;
-                if (!ec)
-                    std::cout << buf << std::endl;
+                if (!ec) {
+                    buf[size] = '\0';
+                    std::cout << "recv: " << buf.c_str() << std::endl;
+                }
             });
         ios.restart();
         ios.run();
