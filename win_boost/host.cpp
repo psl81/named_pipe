@@ -24,7 +24,7 @@ int main()
 
     boost::asio::detail::native_pipe_handle pipe_handle = 
         ::CreateNamedPipeW(pipe_name,
-            PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
+            PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_BYTE | PIPE_WAIT, 1, buff_size, buff_size, NMPWAIT_USE_DEFAULT_WAIT, nullptr);
 
     if (pipe_handle == INVALID_HANDLE_VALUE) {
@@ -32,32 +32,29 @@ int main()
         return -1;
     }
 
-    boost::asio::writable_pipe pipe(ios, pipe_handle);
+    boost::asio::readable_pipe pipe(ios, pipe_handle);
     // run client
     auto program_path = boost::dll::program_location().parent_path();
     auto client_pathname = bp::search_path("client", { program_path });
     bp::child client(client_pathname, new_window());
 
     if (client.running())
-    {
-        BOOL result = ::ConnectNamedPipe(pipe_handle, nullptr);
-        std::string buf;
-        while (client.running())
-        {
-            try {
-                std::cout << "send: ";
-                std::getline(std::cin, buf);
-                if (not buf.empty())
-                    pipe.async_write_some(boost::asio::buffer(buf), 
-                        [&buf](auto ec, auto size) {
-                            std::cout << ec.what() << std::endl;
-                        });
-            }
-            catch (std::exception & e) {
-                std::cout << e.what() << std::endl;
-                break;
-            }
-        }
+        ConnectNamedPipe(pipe_handle, nullptr);
+
+    std::string buf(buff_size, '\0');
+    auto boost_buff = boost::asio::buffer(buf);
+    while (client.running()) {
+        pipe.async_read_some(boost_buff,
+            [&buf](auto ec, auto size) {
+                if (ec)
+                    std::cout << ec.what() << std::endl;
+                if (!ec) {
+                    buf[size] = '\0';
+                    std::cout << "recv: " << buf.c_str() << std::endl;
+                }
+            });
+        ios.restart();
+        ios.run();
     }
 
     // wait for the client to exit

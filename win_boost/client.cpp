@@ -9,7 +9,7 @@ int main()
     boost::asio::io_context ios;
 
     boost::asio::detail::native_pipe_handle pipe_handle = 
-        ::CreateFileW(pipe_name, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        ::CreateFileW(pipe_name, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
 
     if (pipe_handle == INVALID_HANDLE_VALUE) {
@@ -17,22 +17,17 @@ int main()
         return -1;
     }
 
-    boost::asio::readable_pipe pipe(ios);
+    boost::asio::writable_pipe pipe(ios);
     pipe.assign(pipe_handle);
 
-    std::string buf(buff_size, '\0');
-    auto boost_buff = boost::asio::buffer(buf);
+    std::string buf;
     while (true) {
-        pipe.async_read_some(boost_buff,
-            [&buf](auto ec, auto size) {
-                if (ec)
+        std::cout << "send: ";
+        std::getline(std::cin, buf);
+        if (not buf.empty())
+            pipe.async_write_some(boost::asio::buffer(buf),
+                [&buf](auto ec, auto size) {
                     std::cout << ec.what() << std::endl;
-                if (!ec) {
-                    buf[size] = '\0';
-                    std::cout << "recv: " << buf.c_str() << std::endl;
-                }
-            });
-        ios.restart();
-        ios.run();
+                });
     }
 }
