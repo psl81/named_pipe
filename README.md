@@ -1,10 +1,12 @@
-# named_pipe
+# Named Pipe Examples
+
+Using a named pipe with the boost library in two ways.
 
 How to build:
 ```
 mkdir build
 cd build
-conan install --build missing ../v1
-cmake ../v1
+conan install --build missing ../boost
+cmake ../boost
 cmake --build .
 ```
